@@ -10,7 +10,7 @@ import (
 )
 
 type Point struct {
-	X, Y int
+	Y, X int
 }
 
 func printBoard(board [200][1000]string, deepestY int) {
@@ -32,27 +32,28 @@ func rockRange(board [200][1000]string, xstart int, ystart int, xend int, yend i
 		// column
 		if yend < ystart {
 			// up
-			for i := 0; i < ystart-yend; i++ {
+			for i := 0; i <= ystart-yend; i++ {
 				board[ystart-i][xstart] = "#"
 			}
 		} else {
-			for i := 0; i < yend-ystart; i++ {
+			for i := 0; i <= yend-ystart; i++ {
 				board[ystart+i][xstart] = "#"
 			}
 		}
-	} else {
+	} else if ystart == yend {
 		// row
 		if xend < xstart {
-			for i := 0; i < xstart-xend; i++ {
-				fmt.Printf("Adding row %v, %v\n", xstart-i, ystart)
+			for i := 0; i <= xstart-xend; i++ {
 				board[ystart][xstart-i] = "#"
 			}
 		} else {
-			for i := 0; i < xend-xstart; i++ {
-				fmt.Printf("Adding row %v, %v\n", xstart-i, ystart)
+			for i := 0; i <= xend-xstart; i++ {
 				board[ystart][xstart+i] = "#"
 			}
 		}
+	} else {
+		//ystart == yend and xstart ==  xend
+		board[ystart][xstart] = "#"
 	}
 	return board
 }
@@ -99,39 +100,41 @@ func main() {
 			yprev = y
 		}
 	}
-	//printBoard(board, 26)
+
+	part1Sand := part1(board, deepestY)
+	part2Sand := part2(board, deepestY+2)
+	//printBoard(board, deepestY+1)
+	fmt.Printf("FreeFalling after %v\n", part1Sand)
+	fmt.Printf("Part2 %v\n", part2Sand)
+	if err := f.Close(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func part1(board [200][1000]string, deepestY int) int {
 
 	freeFalling := false
 	sandUnits := 1
-	//fmt.Printf("DeepestY = %v\n", deepestY)
-	for {
-		//sand := Point{500, 0}
-		x := 500
-		for y := 0; y <= deepestY; y++ {
-			//fmt.Printf("x = %v y = %v ", x, y)
-			if y == deepestY {
+	fmt.Printf("DeepestY = %v\n", deepestY)
+	for !freeFalling {
+		sand := Point{0, 500}
+		for {
+			if sand.Y+1 > deepestY {
 				freeFalling = true
 				break
 			}
-			//fmt.Printf("%v,%v -> %v\n", x, y, board[y][x] == "#")
-			if board[y+1][x] != "." {
-				// should we stop or roll to left?
-				if board[y+1][x-1] == "." && board[y][x-1] == "." {
-					//roll left
-					x--
-					//fmt.Printf("continue...\n")
-					continue
-				} else if board[y+1][x+1] == "." && board[y][x+1] == "." {
-					// roll right
-					x++
-					//fmt.Printf("continue...\n")
-					continue
-				} else {
-					// stop
-					sandUnits++
-					board[y][x] = "o"
-					break
-				}
+			if board[sand.Y+1][sand.X] == "." {
+				sand.Y++
+			} else if board[sand.Y+1][sand.X-1] == "." {
+				sand.X--
+				sand.Y++
+			} else if board[sand.Y+1][sand.X+1] == "." {
+				sand.X++
+				sand.Y++
+			} else {
+				board[sand.Y][sand.X] = "o"
+				sandUnits++
+				break
 			}
 		}
 
@@ -140,9 +143,38 @@ func main() {
 			break
 		}
 	}
-	printBoard(board, deepestY+1)
-	fmt.Printf("FreeFalling %v after %v\n", freeFalling, sandUnits)
-	if err := f.Close(); err != nil {
-		log.Fatal(err)
+	return sandUnits - 1
+}
+
+func part2(board [200][1000]string, floor int) int {
+
+	for x := 0; x < 1000; x++ {
+		board[floor][x] = "#"
 	}
+
+	printBoard(board, floor)
+	sandUnits := 1
+	for {
+		sand := Point{0, 500}
+		if board[sand.Y][sand.X] == "o" {
+			//We've overwritten the "+"
+			break
+		}
+		for {
+			if board[sand.Y+1][sand.X] == "." {
+				sand.Y++
+			} else if board[sand.Y+1][sand.X-1] == "." {
+				sand.X--
+				sand.Y++
+			} else if board[sand.Y+1][sand.X+1] == "." {
+				sand.X++
+				sand.Y++
+			} else {
+				board[sand.Y][sand.X] = "o"
+				sandUnits++
+				break
+			}
+		}
+	}
+	return sandUnits - 1
 }
