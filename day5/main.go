@@ -52,7 +52,6 @@ func parseStacks(cratesF *os.File, noStacks int, stacks []Stack) {
 	fileScanner := bufio.NewScanner(cratesF)
 	fileScanner.Split(bufio.ScanLines)
 	maxLength := 3*noStacks + (noStacks - 1)
-	fmt.Printf("noStacks %v, maxLength %v\n", noStacks, maxLength)
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
 		for ix := 0; ix < maxLength; ix += 4 {
@@ -61,7 +60,6 @@ func parseStacks(cratesF *os.File, noStacks int, stacks []Stack) {
 				stackIndex := ix / 4
 				newStack := revPush(stacks[stackIndex], crate)
 				stacks[stackIndex] = newStack
-				fmt.Printf("push on stack %v %s\n", stackIndex, crate)
 			}
 		}
 	}
@@ -70,12 +68,9 @@ func parseStacks(cratesF *os.File, noStacks int, stacks []Stack) {
 func moveOp(stacks []Stack, numCrates int, fromStack int, toStack int) []Stack {
 	for i := 0; i < numCrates; i++ {
 		newFrom, popped := Pop(stacks[fromStack])
-		fmt.Printf("NewFrom %v, Popped %v\n", newFrom, popped)
 		newTo := Push(stacks[toStack], popped)
-		fmt.Printf("newTo %v, pushed %v\n", newTo, popped)
 		stacks[fromStack] = newFrom
 		stacks[toStack] = newTo
-		fmt.Printf("newStacks %v\n", stacks)
 	}
 	return stacks
 }
@@ -118,7 +113,6 @@ func main() {
 			if regexp.MatchString(line) {
 				//TODO: Read the saved stacks and enter them into the stacs array
 				parseStacks(cratesF, 9, stacks)
-				fmt.Printf("STACK0 %v \n", stacks)
 				parseMode = move
 				continue
 			}
@@ -130,14 +124,12 @@ func main() {
 
 		} else {
 			parts := strings.Split(line, " ")
-			fmt.Printf("%v\n", parts)
 			num, _ := strconv.Atoi(parts[1])
 			fromIx, _ := strconv.Atoi(parts[3])
 			toIx, _ := strconv.Atoi(parts[5])
 			fromIx--
 			toIx--
 			stacks = moveOp(stacks, num, fromIx, toIx)
-			fmt.Printf("stacks %v\n", stacks)
 		}
 	}
 	fmt.Printf("%s", stacks[0].items[0])
