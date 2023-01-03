@@ -50,7 +50,7 @@ func (tree *Tree) Add(node Tree) {
 			diff := node2.size - node.size
 			tree.Unwind(diff)
 		}
-	} else if node.size != 0 {
+	} else {
 		tree.children[node.tag] = &node
 		tree.Unwind(node.size)
 	}
@@ -115,10 +115,11 @@ func (tree *Tree) Find(path []string) (bool, *Tree) {
 
 func (tree *Tree) Cd(path []string) (bool, *Tree) {
 	if len(path) == 0 {
+		fmt.Printf("Reached end...\n")
 		return true, tree
 	}
 
-	fmt.Printf("Cd %v\n", path)
+	fmt.Printf("Cd '%v' %v\n", path[0], len(path))
 
 	if path[0] == "." && len(path) == 1 {
 		return true, tree
@@ -126,8 +127,21 @@ func (tree *Tree) Cd(path []string) (bool, *Tree) {
 		if tree.parent == nil {
 			return true, tree
 		} else {
+			fmt.Printf("tree parent %v\n", tree.parent)
 			ok, ret := tree.parent.Cd(path)
-			if ok == true {
+			if ok {
+				return true, ret
+			} else {
+				return false, nil
+			}
+		}
+	} else if path[0] == "" {
+		if tree.parent == nil {
+			return true, tree
+		} else {
+			fmt.Printf("tree parent %v\n", tree.parent)
+			ok, ret := tree.parent.Cd(path)
+			if ok {
 				return true, ret
 			} else {
 				return false, nil
@@ -137,7 +151,7 @@ func (tree *Tree) Cd(path []string) (bool, *Tree) {
 		if tree.parent != nil {
 			fmt.Printf("Trying %v\n", path[1:])
 			ok, ret := tree.parent.Cd(path[1:])
-			if ok == true {
+			if ok {
 				return true, ret
 			} else {
 				return false, nil
@@ -147,12 +161,13 @@ func (tree *Tree) Cd(path []string) (bool, *Tree) {
 			return false, nil
 		}
 	} else {
-		//
+		fmt.Printf("Looking for %v in %v\n", path[0], tree.children)
 		childPath, exists := tree.children[path[0]]
 		if exists {
+			fmt.Printf("#1 %v (cd... %v)\n", childPath, path[1:])
 			return childPath.Cd(path[1:])
 		} else {
-			fmt.Printf("cannot go to %v from %v\n", path[0], tree.tag)
+			fmt.Printf("#2 cannot go to %v from %v\n", path[0], tree.tag)
 			return false, nil
 		}
 	}
@@ -205,128 +220,91 @@ func compareRanges(afrom int, bfrom int, ato int, bto int) bool {
 }
 
 func main() {
-	f, err := os.Open("testinput")
+	f, err := os.Open("input")
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
-	dirSizes := make(map[string]uint32)
-	var curDirSize uint32
-	var totalSize uint32
-	var pathLen int
-	curDir := "/"
-	var pathTokens []string
 	fileScanner := bufio.NewScanner(f)
 	fileScanner.Split(bufio.ScanLines)
 	fileScanner.Scan()
 	line := fileScanner.Text()
 	doReadNewLine := false
 	fileTree := NewTree("/", nil)
-	var ok bool
 	for {
-		if doReadNewLine == true {
-			if fileScanner.Scan() == false {
+		if doReadNewLine {
+			if !fileScanner.Scan() {
 				break
 			}
 			line = fileScanner.Text()
+			fmt.Printf("Read new line %v..\n", line)
 		} else {
 			//Ok, but read a line in the next loop
+			fmt.Printf("Continue with the last line\n")
 			doReadNewLine = true
 		}
 		parts := strings.Split(line, " ")
 		fmt.Printf("====\n")
-		fmt.Printf("(CD) Read \"%v\" at %v\n", line, curDir)
+		fmt.Printf("Read \"%v\"\n", line)
 		fileTree.Print(0)
 		if parts[0] == "$" {
-			if len(parts) == 3 {
-				// $ cd ../
-				// $ cd a/b/c
-				path := parts[2]
-				if path == curDir {
-					// We haven't moved, loop
-					fmt.Printf("loop cd: %s %s from %s\n", parts[1], parts[2], curDir)
-					continue
-				} else if path == "/" {
-					// Going to the top, save size and reset curDir
-					fmt.Printf("reset cd: %s %s from %s\n", parts[1], parts[2], curDir)
-					curDir = "/"
-					ok, fileTree = fileTree.Cd([]string{"/"})
-					if ok != true {
-						fmt.Printf("Error")
-					}
-				} else if path == ".." {
-					fmt.Printf("UP1 cd: %s from %s\n", parts[2], curDir)
-					dirSizes[curDir] = curDirSize
-					pathTokens = strings.Split(curDir, "/")
-					pathLen = len(pathTokens)
-					curDir = strings.Join(pathTokens[:pathLen-1], "/") // '/' is not included
-					parts2 := strings.Split(parts[2], "/")
-					ok, fileTree = fileTree.Cd(parts2)
-					fmt.Printf("New curDir = %v %v\n", curDir, fileTree.tag)
-					if ok != true {
-						fmt.Printf("Error")
-					}
-				} else {
-					//subdir
-					fmt.Printf("DOWN1 cd: %s %s from %s\n", parts[1], parts[2], curDir)
-					dirSizes[curDir] = curDirSize
-					curDir += "/" + path
-					fmt.Printf("New curDir = %s\n", curDir)
-					pParts := strings.Split(path, "/")
-					_, exists := fileTree.children[pParts[0]]
-					if !exists {
-						fmt.Printf("Found new subdir %v, creating..\n", pParts[0])
-						newNode := NewTree(pParts[0], fileTree)
+			if parts[1] == "cd" {
+				pParts := strings.Split(parts[2], "/")
+				for i := 0; i < len(pParts); i++ {
+					tag := pParts[i]
+					fmt.Printf("...%v (%v of %v)\n", tag, i+1, len(pParts))
+					_, exists := fileTree.children[tag]
+					if tag != "" && !exists {
+						newNode := NewTree(tag, fileTree)
 						fileTree.Add(*newNode)
-						//fileTree.children[pParts[0]] = newNode
+						fmt.Printf("Found new subdir %v, adding..\n", tag)
+						fileTree.Print(0)
+						fmt.Printf("-----\n")
 					}
 					ok, newFileTree := fileTree.Cd(pParts)
 					if ok {
 						fileTree = newFileTree
+					} else {
+						fmt.Printf("ERROR CD\n")
+						log.Fatal(-1)
 					}
-
 				}
-			} else if len(parts) == 2 {
-				//read until we see a $
+				fmt.Printf("Cd done...\n")
+			} else if parts[1] == "ls" {
+				// read until we see a $
 				fileScanner.Scan()
 				line = fileScanner.Text()
 				fmt.Printf("%v\n", line)
 				for {
 					parts = strings.Split(line, " ")
 					if parts[0] == "$" {
+						// We've reached the
+						// end and there's a
+						// new command in
+						// 'line'. break the for-loop and start over
 						doReadNewLine = false
 						break
 					} else {
 						size, err := strconv.Atoi(parts[0])
-						if err == nil {
-							// If no err, then we have a file
-							tag := parts[1]
-							_, exists := fileTree.children[tag]
+						// if 'err' is nil, we've seen a directory
+						isFile := err == nil
+						tag := parts[1]
+						_, exists := fileTree.children[tag]
+						if isFile {
 							if !exists {
 								newNode := NewTree(tag, fileTree)
 								newNode.tpe = file
 								newNode.size = int32(size)
-								//fileTree.children[tag] = newNode
-								//fileTree.size += int32(size)
 								fileTree.Add(*newNode)
 								fmt.Printf("Added %s %v => tree.size = %v\n", parts[1], size, fileTree.size)
-							} else {
-								fmt.Printf("Aldready added %v\n", parts[1])
 							}
 						} else {
-							tag := parts[1]
-							_, exists := fileTree.children[tag]
 							if !exists {
-								fmt.Printf("Adding directory %v\n", parts[1])
 								newNode := NewTree(tag, fileTree)
 								fileTree.Add(*newNode)
-								//fileTree.children[tag] = newNode
-							} else {
-								fmt.Printf("Already saw %v\n", parts[1])
 							}
-
 						}
-						if fileScanner.Scan() == false {
+						if !fileScanner.Scan() {
 							// HACK
 							doReadNewLine = true
 							break
@@ -335,9 +313,10 @@ func main() {
 					}
 				}
 			}
-
 		}
 	}
+
+	fmt.Printf("\n-=-=-=-=-=-=-=-=-=\nALL DONE GO THROUGH EVERYTHING\n")
 	_, fileTree = fileTree.Cd([]string{"/"})
 	fileTree.Print(0)
 	fileTree.Walk(sumUpSize)
