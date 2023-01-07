@@ -8,6 +8,18 @@ import (
 	"strconv"
 )
 
+type Tree struct {
+	height int
+	seen   bool
+}
+
+func createTree(height int, seen bool) *Tree {
+	t := Tree{height: height,
+		seen: seen,
+	}
+	return &t
+}
+
 func compareRanges(afrom int, bfrom int, ato int, bto int) bool {
 	if afrom <= bfrom {
 		if ato >= bto {
@@ -17,83 +29,103 @@ func compareRanges(afrom int, bfrom int, ato int, bto int) bool {
 	return false
 }
 
-//rotate right
-func matrixRotate(matrix [5][5]int) [5][5]int {
-	var target [5][5]int
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			target[j][5-i-1] = matrix[i][j]
+// rotate right
+func matrixRotate(matrix [99][99]*Tree) [99][99]*Tree {
+	var target [99][99]*Tree
+	for i := 0; i < 99; i++ {
+		for j := 0; j < 99; j++ {
+			target[j][99-i-1] = matrix[i][j]
 		}
 	}
 	return target
 }
+func printForest(forest [99][99]*Tree) {
+	for i := 0; i < 99; i++ {
+		for j := 0; j < 99; j++ {
+			fmt.Printf("%v", forest[i][j].height)
+		}
+		fmt.Printf("\n")
+	}
+
+}
+
+func printSeenTrees(forest [99][99]*Tree) {
+	for i := 0; i < 99; i++ {
+		for j := 0; j < 99; j++ {
+			if forest[i][j].seen {
+				fmt.Print("1")
+			} else {
+				fmt.Print("0")
+			}
+		}
+		fmt.Printf("\n")
+	}
+
+}
 
 func main() {
-	f, err := os.Open("testinput")
+	f, err := os.Open("input")
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 	// 99 rows.
 	// 99
-	size := 5
-	var forest [5][5]int
+	size := 99
+	var forest [99][99]*Tree
 	fileScanner := bufio.NewScanner(f)
 	fileScanner.Split(bufio.ScanLines)
 	for i := 0; i < size; i++ {
 		fileScanner.Scan()
 		line := fileScanner.Text()
 		for j := 0; j < size; j++ {
-			tree, err := strconv.Atoi(string(line[j]))
+			treeH, err := strconv.Atoi(string(line[j]))
 			if err != nil {
 				log.Fatal(err)
 				os.Exit(1)
 			}
+			tree := createTree(treeH, false)
 			forest[i][j] = tree
+
 		}
 	}
-	// TODO: Check forest from each direction by rotating the matrix
 	seenHeight := 0
 	seen := 0
-	fmt.Printf("Forest = %v\n", forest)
+	// printForest(forest)
+	fmt.Printf("READ OK\n\n\n")
 	for rot := 0; rot < 4; rot++ {
-		for i := 0; i < 5; i++ {
-			for j := 0; j < 5; j++ {
-				if forest[i][j] < 0 {
-					fmt.Printf("X")
-					if -(forest[i][j]) > seenHeight {
-						seenHeight = -(forest[i][j])
-						continue
-					} else {
-						continue
+		for i := 0; i < 99; i++ {
+			for j := 0; j < 99; j++ {
+				tree := forest[i][j]
+				treeHeight := tree.height
+				if i == 0 {
+					// All trees on the edges can
+					// be seen
+					if !tree.seen {
+						// Corner trees can be
+						// seen from multiple
+						// directions, only
+						// count them once
+						seen += 1
+						tree.seen = true
 					}
-				}
-				if seenHeight < forest[i][j] {
-					seen += 1
-					seenHeight = forest[i][j]
-					forest[i][j] = -seenHeight
-					fmt.Printf("1")
-				} else if seenHeight == 0 && forest[i][j] == 0 {
-					seen += 1
-					forest[i][j] = -seenHeight
-					fmt.Printf("1")
-
-				} else {
-					fmt.Printf("0")
+				} else if seenHeight < treeHeight {
+					if !tree.seen {
+						seen += 1
+						tree.seen = true
+					}
+					seenHeight = treeHeight
 				}
 			}
-			fmt.Printf("\n")
-
 			seenHeight = 0
 		}
 		seenHeight = 0
-		fmt.Printf("Forest = %v\n", forest)
 		forest = matrixRotate(forest)
-		fmt.Printf("rotated = %v\n", matrixRotate(forest))
+
 	}
-	//TODO: Go through all directories, find the big ones and add to totalSize
+	//printSeenTrees(forest)
+	fmt.Printf("\n")
 	fmt.Printf("seen = %v\n", seen)
-	//fmt.Printf("rotated = %v\n", matrixRotate(forest))
 	if err := f.Close(); err != nil {
 		log.Fatal(err)
 	}
